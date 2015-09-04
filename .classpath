@@ -15,5 +15,7 @@
 	<classpathentry kind="con" path="org.eclipse.jst.j2ee.internal.module.container"/>
 	<classpathentry kind="lib" path="F:/Program Files/Java/java/lib/hadoop-common-0.23.5.jar"/>
 	<classpathentry kind="lib" path="F:/Program Files/Java/java/lib/hadoop-mapred-0.22.0.jar"/>
+	<classpathentry kind="lib" path="F:/Program Files/Java/java/lib/commons-lang3-3.4/commons-lang3-3.4.jar"/>
+	<classpathentry kind="lib" path="F:/Program Files/Java/java/lib/commons-lang3-3.4/commons-lang3-3.4-javadoc.jar"/>
 	<classpathentry kind="output" path="build/classes"/>
 </classpath>
