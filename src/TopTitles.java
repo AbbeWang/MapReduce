@@ -190,7 +190,7 @@ public class TopTitles extends Configured implements Tool {
     public static class TopTitlesReduce extends Reducer<NullWritable, TextArrayWritable, Text, IntWritable> {
         Integer N;
         // TODO
-        private TreeSet<Pair<Integer, String>> countToTitleMap =	new TreeSet<Pair<Integer, String>>();
+        private TreeSet<Pair<Integer, String>> countToTitleMap = new TreeSet<Pair<Integer, String>>();
 
         @Override
         protected void setup(Context context) throws IOException,InterruptedException {
