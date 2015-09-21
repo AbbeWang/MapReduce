@@ -11,6 +11,7 @@ import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapreduce.Job;
 import org.apache.hadoop.mapreduce.Mapper;
 import org.apache.hadoop.mapreduce.Reducer;
+import org.apache.hadoop.mapreduce.Mapper.Context;
 import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
 import org.apache.hadoop.mapreduce.lib.input.KeyValueTextInputFormat;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
@@ -51,14 +52,79 @@ public class TopPopularLinks extends Configured implements Tool {
     @Override
     public int run(String[] args) throws Exception {
         // TODO
+    	Configuration conf = this.getConf();
+        FileSystem fs = FileSystem.get(conf);
+        Path tmpPath = new Path("/mp2/tmp");
+        fs.delete(tmpPath, true);
+
+        Job jobA = Job.getInstance(conf, "Page Count");
+        jobA.setOutputKeyClass(IntWritable.class);
+        jobA.setOutputValueClass(IntWritable.class);
+
+        jobA.setMapperClass(LinkCountMap.class);
+        jobA.setReducerClass(LinkCountReduce.class);
+
+        FileInputFormat.setInputPaths(jobA, new Path(args[0]));
+        FileOutputFormat.setOutputPath(jobA, tmpPath);
+
+        jobA.setJarByClass(TopPopularLinks.class);
+        jobA.waitForCompletion(true);
+
+        Job jobB = Job.getInstance(conf, "Top Pages");
+        jobB.setOutputKeyClass(IntWritable.class);
+        jobB.setOutputValueClass(IntWritable.class);
+
+        jobB.setMapOutputKeyClass(NullWritable.class);
+        jobB.setMapOutputValueClass(IntArrayWritable.class);
+
+        jobB.setMapperClass(TopLinksMap.class);
+        jobB.setReducerClass(TopLinksReduce.class);
+        jobB.setNumReduceTasks(1);
+
+        FileInputFormat.setInputPaths(jobB, tmpPath);
+        FileOutputFormat.setOutputPath(jobB, new Path(args[1]));
+
+        jobB.setInputFormatClass(KeyValueTextInputFormat.class);
+        jobB.setOutputFormatClass(TextOutputFormat.class);
+
+        jobB.setJarByClass(TopPopularLinks.class);
+        return jobB.waitForCompletion(true) ? 0 : 1;
     }
 
     public static class LinkCountMap extends Mapper<Object, Text, IntWritable, IntWritable> {
         // TODO
+    	@Override
+        public void map(Object key, Text value, Context context) throws IOException, InterruptedException {
+        	
+        	String line = value.toString();
+			StringTokenizer tokenizer = new StringTokenizer(line, " \t,;.?!-:@[](){}_*/");
+			
+			int i = 0;
+			while (tokenizer.hasMoreTokens()){
+				String nextToken = tokenizer.nextToken();
+				
+				if (i == 0)
+					context.write(new IntWritable(Integer.parseInt(nextToken)), new IntWritable(0));
+				else
+					context.write(new IntWritable(Integer.parseInt(nextToken)), new IntWritable(1));
+				
+				i++;
+			}
+        }
     }
 
     public static class LinkCountReduce extends Reducer<IntWritable, IntWritable, IntWritable, IntWritable> {
         // TODO
+    	@Override
+        public void reduce(IntWritable key, Iterable<IntWritable> values, Context context) throws IOException, InterruptedException {
+        	
+        	int sum = 0;
+			for(IntWritable val: values){
+				sum += val.get();
+			}
+			
+			context.write(key, new IntWritable(sum));        	
+        }
     }
 
     public static class TopLinksMap extends Mapper<Text, Text, NullWritable, IntArrayWritable> {
@@ -70,6 +136,32 @@ public class TopPopularLinks extends Configured implements Tool {
             this.N = conf.getInt("N", 10);
         }
         // TODO
+        
+        private TreeSet<Pair<Integer, Integer>> countToPageMap = new TreeSet<Pair<Integer, Integer>>();
+        
+        @Override
+        public void map(Text key, Text value, Context context) throws IOException, InterruptedException {
+
+        	Integer count = Integer.parseInt(value.toString());
+			Integer pageID = Integer.parseInt(key.toString());
+			
+			countToPageMap.add(new Pair<Integer, Integer>(count, pageID));
+			
+			if(countToPageMap.size() > N){
+				countToPageMap.remove(countToPageMap.first());
+			}
+        }
+
+        @Override
+        protected void cleanup(Context context) throws IOException, InterruptedException {
+
+        	for(Pair<Integer, Integer> item : countToPageMap){
+				Integer[] integers = {item.second, item.first};
+				IntArrayWritable val = new IntArrayWritable(integers);
+				context.write(NullWritable.get(), val);
+			}
+        }
+
     }
 
     public static class TopLinksReduce extends Reducer<NullWritable, IntArrayWritable, IntWritable, IntWritable> {
@@ -81,6 +173,31 @@ public class TopPopularLinks extends Configured implements Tool {
             this.N = conf.getInt("N", 10);
         }
         // TODO
+        
+        private TreeSet<Pair<Integer, Integer>> countToPageMap = new TreeSet<Pair<Integer, Integer>>();
+
+        @Override
+        public void reduce(NullWritable key, Iterable<IntArrayWritable> values, Context context) throws IOException, InterruptedException {
+
+        	for (IntArrayWritable val: values) {
+        		IntWritable[] pair= (IntWritable[]) val.toArray();
+				
+				Integer pageID = Integer.parseInt(pair[0].toString());
+				Integer count =	Integer.parseInt(pair[1].toString());
+				
+				countToPageMap.add(new Pair<Integer, Integer>(count, pageID));
+				
+				if (countToPageMap.size() > N) {
+					countToPageMap.remove(countToPageMap.first());
+				}
+			}
+			
+			for (Pair<Integer, Integer> item: countToPageMap) {
+				IntWritable ID = new IntWritable(item.second);
+				IntWritable value = new IntWritable(item.first);
+				context.write(ID, value);
+			}
+        }
     }
 }
 
