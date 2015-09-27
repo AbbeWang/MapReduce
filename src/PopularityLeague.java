@@ -214,7 +214,7 @@ public class PopularityLeague extends Configured implements Tool {
         	int[] count = new int[countToPageMap.size()];
         	int i = 0;
         	
-			for (Pair<Integer, Integer> item: countToPageMap.descendingSet()) {
+			for (Pair<Integer, Integer> item: countToPageMap) {
 				
 				ID[i] = item.second;
 				count[i] = item.first;
@@ -225,28 +225,31 @@ public class PopularityLeague extends Configured implements Tool {
 						rank[i] = rank[i-1];
 					}
 				}
+				context.write(new IntWritable(ID[i]), new IntWritable(rank[i]));
 				
 				i++;
+			}
 				
 //				IntWritable ID = new IntWritable(item.second);
 //				IntWritable value = new IntWritable(item.first);
 //				context.write(ID, value);
 				
-				for (int j=0; j < league.size(); j++) {
-					IntWritable pageID = new IntWritable(Integer.parseInt(league.get(j)));
-					
-					IntWritable value = null;
-					for(int k=0; k<league.size(); k++){
-						if(ID[k] == Integer.parseInt(league.get(j))){
-							value = new IntWritable(rank[k]);
-						}
-					}
-					
-					context.write(pageID, value);
-				}
+//				for (int j=0; j < league.size(); j++) {
+//					IntWritable pageID = new IntWritable(Integer.parseInt(league.get(j)));
+//					
+//					IntWritable value = null;
+//					for(int k=0; k<league.size(); k++){
+//						if(ID[k] == Integer.parseInt(league.get(j))){
+//							value = new IntWritable(rank[k]);
+//						}
+//					}
+//					
+//					context.write(pageID, value);
+//				}
+				
 
 				
-			}
+			
         }
     }
 
